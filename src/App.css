@@ -1,0 +1,78 @@
+button, input {
+  all: unset;
+}
+button.primary {
+  background-color: blueviolet;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+button.primary:disabled {
+  background-color: grey;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+button.secondary {
+  background-color: rgb(255, 255, 255);
+  border-style: solid;
+  padding: 8px;
+  margin-right: 8px;
+  border-radius: 12px;
+  border-color: #8a2be2;
+  color: #8a2be2
+}
+button.secondary:disabled {
+  border-color: #808080;
+  color: grey;
+}
+input {
+  border-style: solid;
+  border-color: gray;
+  line-height: 24px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+#text-message {
+  margin-right: 8px;
+  width: 60%;
+}
+.App h1 {
+  text-align: center;
+}
+.App {
+  margin-left: 16px;
+  margin-right: 16px;
+  height: calc(100vh - 160px);
+  text-align: center;
+}
+
+#messages-section {
+  position: relative;
+  display: inline-block;
+  border-style: solid;
+  height: 100%;
+  vertical-align: top;
+  padding: 0px 16px 32px;
+  text-align: right;
+  width: 550px;
+}
+
+#messages-section h3 {
+  text-align: left;
+}
+
+#input-section input {
+  text-align: left;
+}
+
+#video-button {
+  width: 16px;
+  height: 16px;
+}
+#end-conversation {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+}

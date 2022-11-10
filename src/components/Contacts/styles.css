@@ -1,0 +1,49 @@
+#contacts {
+    display: inline-block;
+    width: 360px;
+    height: 100%;
+    padding: 0px 16px 32px;
+    border-style: solid;
+    margin-right: 24px;
+    text-align: left;
+    position: relative;
+}
+
+#contacts h3 {
+    padding-left: 8px;
+}
+
+#contacts button.clearHistory {
+    position: absolute;
+    top: 10px;
+    right: 8px;
+}
+
+#contacts .contact-card {
+    position: relative;
+    border-style: solid;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    box-shadow: 4px 4px rgb(0,0,0,0.2);
+    border-color: rgb(0,0,0,0.7);
+}
+#contacts .contact-card.inactive {
+    background-color: rgb(208, 207, 207);
+    border-color: rgb(0,0,0,0.3);
+    box-shadow: none;
+}
+#contacts .contact-card.inactive p
+#contacts .contact-card.inactive h4 {
+    color: rgba(56, 56, 57, 0)
+}
+
+#contacts .contact-card:hover {
+    cursor: pointer;
+}
+
+#contacts .inactive-tag {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+}

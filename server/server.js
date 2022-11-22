@@ -146,7 +146,7 @@ app.post('/currentMessage', async function(req,res){
 });
 
 app.post('/disconnect/:sessionId', async function(req, res) {
-    const url = `https://studio-api-eu.ai.vonage.com/live-agent/disconnect/${req.params.sessionId}`
+    const url = `https://studio-api-us.ai.vonage.com/live-agent/disconnect/${req.params.sessionId}`
 	try {
 		await axios.post(url, {}, {
             headers: {
@@ -171,7 +171,7 @@ app.post('/disconnect/:sessionId', async function(req, res) {
 })
 
 app.post('/sendMessage/:sessionId', async function(req, res) {
-    const url = `https://studio-api-eu.ai.vonage.com/live-agent/outbound/${req.params.sessionId}`
+    const url = `https://studio-api-us.ai.vonage.com/live-agent/outbound/${req.params.sessionId}`
     const message =
         {
             "message_type": req.body.messageType,
@@ -222,7 +222,7 @@ app.post('/clearHistory', async function(req,res){
     //Disconnect all session
     const dbData = db.get('messages').value()
     dbData.forEach(async (data) => {
-        const url = `https://studio-api-eu.ai.vonage.com/live-agent/disconnect/${data.sessionId}`
+        const url = `https://studio-api-us.ai.vonage.com/live-agent/disconnect/${data.sessionId}`
         try {
             await axios.post(url, {}, {
                 headers: {

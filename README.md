@@ -12,5 +12,5 @@ This is a whatsapp agent for ticket: https://jira.vonage.com/browse/SEG-670
 
 ## Vonage AI studio
 1. in your live-agent routing node, set:
-    Start Connection EP: ${your-public-server}/pastMessages?region=${project-region}
-    Inbound transfer EP: ${your--public-server}/currentMessage
+    Start Connection EP: `your-public-server`/pastMessages?region=`project-region`
+    Inbound transfer EP: `your--public-server`/currentMessage

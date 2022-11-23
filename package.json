@@ -15,7 +15,8 @@
     "websocket": "^1.0.34"
   },
   "scripts": {
-    "start:prod": "npm run build && (cd server && node server.js)",
+    "install:backend": "cd server && npm install",
+    "start:prod": "cd server && node server.js",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

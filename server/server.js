@@ -24,6 +24,8 @@ const wsServer = new webSocketServer({
     httpServer: server
 })
 let clients = {};
+let region = "us";
+const validRegion = ["us", "eu"]
 wsServer.on('request', function(request) {
     console.log(`${(new Date())} received a new connection from ${request.origin}`)
     const userId = uuidv4();
@@ -80,7 +82,6 @@ app.use(express.static(path.join(__dirname, "../build")));
 
 app.get('/', function(req,res){
     res.sendFile(path.join(__dirname, "../build/index.html"));
-    //__dirname : It will resolve to your project folder.
 });
 
 // body: {
@@ -89,17 +90,10 @@ app.get('/', function(req,res){
 //   },
 app.post('/pastMessages', async function(req,res){
     console.log("post pass message", req.body)
+    if (req.query.region && validRegion.includes(req.query.region)) region = req.query.region
     const history = req.body.history
     const transcription = history.transcription;
 
-    // // Hack: check if last message is "Connecting you to a teacher......"
-    // if (transcription[transcription.length - 1] === "Talk To Teacher") {
-    //     transcription.push({Agent: "Connecting you to a teacher......"})
-    // }
-    // else if (transcription[transcription.length - 1] !== "Connecting you to a teacher......") {
-    //     transcription.push({User: "Talk To Teacher"})
-    //     transcription.push({Agent: "Connecting you to a teacher......"})
-    // }
     const senderPhoneNumberParam = req.body.history.parameters.find((param) => param.name === "SENDER_PHONE_NUMBER");
     const existingData = db.get("messages").find({senderPhoneNumber: senderPhoneNumberParam.value}).value()
     if (existingData) {
@@ -146,7 +140,7 @@ app.post('/currentMessage', async function(req,res){
 });
 
 app.post('/disconnect/:sessionId', async function(req, res) {
-    const url = `https://studio-api-us.ai.vonage.com/live-agent/disconnect/${req.params.sessionId}`
+    const url = `https://studio-api-${region}.ai.vonage.com/live-agent/disconnect/${req.params.sessionId}`
 	try {
 		await axios.post(url, {}, {
             headers: {
@@ -171,7 +165,7 @@ app.post('/disconnect/:sessionId', async function(req, res) {
 })
 
 app.post('/sendMessage/:sessionId', async function(req, res) {
-    const url = `https://studio-api-us.ai.vonage.com/live-agent/outbound/${req.params.sessionId}`
+    const url = `https://studio-api-${region}.ai.vonage.com/live-agent/outbound/${req.params.sessionId}`
     const message =
         {
             "message_type": req.body.messageType,
@@ -222,7 +216,7 @@ app.post('/clearHistory', async function(req,res){
     //Disconnect all session
     const dbData = db.get('messages').value()
     dbData.forEach(async (data) => {
-        const url = `https://studio-api-us.ai.vonage.com/live-agent/disconnect/${data.sessionId}`
+        const url = `https://studio-api-${region}.ai.vonage.com/live-agent/disconnect/${data.sessionId}`
         try {
             await axios.post(url, {}, {
                 headers: {

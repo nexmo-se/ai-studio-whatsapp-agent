@@ -16,7 +16,8 @@
   },
   "scripts": {
     "install:backend": "cd server && npm install",
-    "start:prod": "cd server && node server.js",
+    "start:dev": "cd server && node server.js",
+    "start:prod": "npm run install:backend && cd server && node server.js",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

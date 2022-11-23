@@ -7,7 +7,7 @@ This is a whatsapp agent for ticket: https://jira.vonage.com/browse/SEG-670
 3. Fill in variables:
     - API_KEY: ai-studio api-key
 4. run `npm run build`
-5. run `npm run start:prod`
+5. run `npm run start:dev`
 6. Make the local url public, you can use various technology such as ngrok or nginx
 
 ## Vonage AI studio

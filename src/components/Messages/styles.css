@@ -43,6 +43,7 @@
     color: #fff; 
     margin-right: 0;
     margin-left: auto;
+    text-align: right;
 }
 
 #message-container p.from-me::before {
@@ -75,6 +76,7 @@
     color: #000;
     margin-right: auto;
     margin-left: 0;
+    text-align: left;
 }
 
 #message-container p.from-them::before {

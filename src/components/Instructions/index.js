@@ -45,7 +45,7 @@ export default function Instructions({userId, setUserId}) {
         <>
         {open &&
           <div id="instruction">
-            <h4>Please paste below URLs in your AI Studio <a _blank="true" href="https://studio.docs.ai.vonage.com/whatsapp/nodes/actions/live-agent-routing">Whatsapp Live Agent Routing Node</a>.</h4>
+            <h4>Please paste below URLs in your AI Studio <a target="_blank" href="https://studio.docs.ai.vonage.com/whatsapp/nodes/actions/live-agent-routing">Whatsapp Live Agent Routing Node</a>.</h4>
             <p className="important"><small>Note: replace region=us to region=eu if you are using eu AI studio server</small></p>
             <p><b>Start Connection EP:</b> {pastMessagesUrl} <span><button className="tertiary" onClick={copyPassMessagesUrl}>Copy</button></span></p>
             <p><b>Inbound transfer EP:</b> {currentMessageUrl} <span><button className="tertiary" onClick={copyCurrentMessageUrl}>Copy</button></span></p>

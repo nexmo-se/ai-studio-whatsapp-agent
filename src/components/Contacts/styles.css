@@ -13,6 +13,10 @@
     padding-left: 8px;
 }
 
+#contacts p {
+    overflow-wrap: break-word;
+}
+
 #contacts button.clearHistory {
     position: absolute;
     top: 10px;

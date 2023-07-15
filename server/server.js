@@ -20,23 +20,12 @@ server.listen(webSocketServerPort, () => {
     console.log('server started on port', webSocketServerPort);
 });
 
-
 const wsServer = new webSocketServer({
     httpServer: server
 })
 let clients = {};
 const validRegion = ["us", "eu"]
 let gnids = utils.getIniStuff(); 
-
-
-// users = [
-//     {
-//         'userId': userId,
-//         'hashedApiKey': 
-//         'us': [sessionid1, session id2],
-//         'eu': [sessionId1, sessionId2]
-//     }
-// ]
 
 // Use JSON file for storage
 const FileSync = require('lowdb/adapters/FileSync');
@@ -51,10 +40,10 @@ wsServer.on('request', function(request) {
     const connection = request.accept(null, request.origin)
     const jwt = request.resourceURL.query.jwt
     let userId = getId(jwt)
-    console.log("request", userId)
+    console.log("ws request", userId)
     if (userId != -1) {
         clients[userId] = connection
-        console.log("set connection")
+        console.log(`set connection ${userId}`)
         disconnectSessions(userId)
 
         // Check if db has userId exist
@@ -74,11 +63,15 @@ app.get('/', function(req,res){
 
 app.post('/addAIStudioKey', async function(req,res){
     const {jwt, apiKey} = req.body
+
+    if (!jwt || !apiKey) {
+        return res.sendStatus(501)
+    }
+
     const hashedApiKey = encrypt(apiKey)
     let userId = getId(jwt)
-    console.log("request", userId)
-    // TODO: create user
-    if (userId != -1) {
+
+    if (userId !== -1) {
         const existingUser = db.get("users").find({"userId": userId}).value()
         // add hashed APIKey to DB
         if (existingUser) {
@@ -98,7 +91,7 @@ app.post('/addAIStudioKey', async function(req,res){
         res.json({userId})
     }
     else {
-        res.status(501)
+        res.sendStatus(501)
     }
 });
 
@@ -106,6 +99,12 @@ app.post('/pastMessages/:userId', async function(req,res){
     console.log("post pass message", req.body)
     const userId = req.params.userId
     const {sessionId} = req.body
+
+    if (!userId || !sessionId) {
+        console.log("missin userid ", userId, "or session id ", sessionId)
+        return res.sendStatus(200);
+    }
+
     let region = 'us'
     if (req.query.region && validRegion.includes(req.query.region)) {
         region = req.query.region
@@ -123,24 +122,22 @@ app.post('/pastMessages/:userId', async function(req,res){
     })
     data["message"] = transcription
 
-    if (userId) {
-        const existingUser = db.get("users").find({"userId": userId}).value()
-        // add hashed APIKey to DB
-        if (existingUser) {
-            if (!existingUser[region]) {
-                await db.get('users')
-                .find({ userId })
-                .push({ [region]: [sessionId] })
-                .write();
-            }
-            else if (!existingUser[region].includes(sessionId)) {
-                let sessionData = existingUser[region].push(sessionId)
-                await db.get('users')
-                .find({ userId })
-                .push({ [region]: sessionData })
-                .write();
-            }     
+    const existingUser = db.get("users").find({"userId": userId}).value()
+    // add hashed APIKey to DB
+    if (existingUser) {
+        if (!existingUser[region]) {
+            await db.get('users')
+            .find({ userId })
+            .push({ [region]: [sessionId] })
+            .write();
         }
+        else if (!existingUser[region].includes(sessionId)) {
+            let sessionData = existingUser[region].push(sessionId)
+            await db.get('users')
+            .find({ userId })
+            .push({ [region]: sessionData })
+            .write();
+        }     
     }
     broadcast(userId, data)
     
@@ -151,7 +148,7 @@ app.post('/currentMessage/:userId', async function(req,res){
     console.log("post current message", req.body)
     const {sessionId, type, text} = req.body
     const userId = req.params.userId
-    if (!userId) {
+    if (!userId || !sessionId || !type) {
         return res.sendStatus(200);
     }
 
@@ -173,6 +170,8 @@ app.post('/currentMessage/:userId', async function(req,res){
                 messageContent = req.body.file.url
             }
             break;
+        default:
+            break;
     }
 
     const chatMessage = {
@@ -189,10 +188,14 @@ app.post('/currentMessage/:userId', async function(req,res){
 app.post('/disconnect/:userId', async function(req, res) {
     const {region, sessionId} = req.body
     const userId = req.params.userId
-    if (!userId || !region || !sessionId) return res.status(501).send()
+    if (!userId || !region || !sessionId) {
+        return res.sendStatus(501)
+    }
 
     const userData =  db.get('users').find({ userId }).value()
-    if (!userData || !userData["hashedApiKey"]) return res.status(501).send()
+    if (!userData || !userData["hashedApiKey"]) {
+        return res.sendStatus(501)
+    }
 
     const url = `https://studio-api-${region}.ai.vonage.com/live-agent/disconnect/${sessionId}`
 	try {
@@ -204,7 +207,7 @@ app.post('/disconnect/:userId', async function(req, res) {
 		res.json({err: null});
 	} catch (err) {
         if (err.response.data.statusCode === 404) {
-            console.log("session id not found")
+            console.log("disconnect: session id not found")
         }
         res.json({err});
 	}
@@ -240,7 +243,7 @@ app.post('/sendMessage/:userId', async function(req, res) {
 
 		res.json({chatMessage, err: null});
 	} catch (err) {
-        console.log("err ", err)
+        console.log("send message err ", err)
         res.json({err: err});
 	}
 })
@@ -263,7 +266,7 @@ function disconnectSessions(userId) {
     const dbData = db.get('users').find({ userId }).value()
     if (!dbData || !dbData['hashedApiKey']) return;
     validRegion.forEach((region) => {
-        if (dbData[region] && dbData[region].length > 0) {
+        if (Array.isArray(dbData[region])) {
             dbData[region].forEach(async (sessionId) => {
                 const url = `https://studio-api-${region}.ai.vonage.com/live-agent/disconnect/${sessionId}`
                 try {
@@ -274,7 +277,7 @@ function disconnectSessions(userId) {
                     });
                 }
                 catch(err) {
-                    console.log("err", err.message)
+                    console.log("disconnect session err", err)
                 }
             })
         }

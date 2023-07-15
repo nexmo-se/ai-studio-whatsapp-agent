@@ -1,13 +1,13 @@
 import clsx from 'clsx';
 import "./styles.css"
 
-export default function Contacts({chatContacts, setCurrentChatData}) {
+export default function Contacts({chats, setCurrentChat}) {
     function updateCurrentChatData(e) {
       e.preventDefault();
       const targetSessionId = e.target.closest('div').getAttribute("data-sessionid")
-      const targetChat = chatContacts.find((data) => data.sessionId === targetSessionId)
+      const targetChat = chats.find((data) => data.sessionId === targetSessionId)
 
-      setCurrentChatData(targetChat)
+      setCurrentChat(targetChat)
     }
 
     return (
@@ -16,7 +16,7 @@ export default function Contacts({chatContacts, setCurrentChatData}) {
         {/* <button className='secondary clearHistory' onClick={clearHistory}>Clear history</button> */}
         <hr></hr>
         {
-            chatContacts.map((data, index) => {
+            chats.map((data, index) => {
                 return (
                     <div className={clsx("contact-card", (data.isActive)? "" : "inactive")} key={`contact-${index}`} data-sessionid={data.sessionId} onClick={updateCurrentChatData}>
                     <h4>{`${data.sender} (${data.senderPhoneNumber})`}<span className="inactive-tag">{data.isActive? "" : "(disconnected)"}</span></h4>

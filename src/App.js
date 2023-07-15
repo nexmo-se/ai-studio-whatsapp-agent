@@ -14,27 +14,24 @@ hostUrl = hostUrl + `?jwt=${jwt}`
 const ws = new WebSocket(hostUrl);
 
 function App() {
-  const [chatContacts, setChatContacts] = useState([]);
-  const [currentChatData, setCurrentChatData] = useState();
-  const [isRegistering, setIsRegistering] = useState(false)
+  const [chats, setChats] = useState([]);
+  const [currentChat, setCurrentChat] = useState();
   const [isLoading, setIsLoading] = useState(true)
-  const [isMessageSending, setIsMessageSending] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
   const [disableActions, setDisableActions] = useState(true)
   const [userId, setUserId] = useState(null)
-
 
   const apiKeyInputRef = useRef();
   const messageInputRef = useRef();
 
   ws.onmessage = function (event) {
-    console.log("on message", JSON.parse(event.data))
     const data = JSON.parse(event.data);
     console.log("Data received", data);
     if (data.userId) {
       setUserId(data.userId)
     }
     else {
-      setChatContacts((prevData) => {
+      setChats((prevData) => {
         const chatIndex = prevData.findIndex((contact) => contact.sessionId === data.sessionId )
         if (data.startDate && chatIndex === -1) {
             return [...prevData, data]
@@ -42,7 +39,6 @@ function App() {
         else if (!data.startDate && chatIndex !== -1){
           const newChat = [...prevData]
           newChat[chatIndex].message.push(data.message)
-          console.log("new chat ", newChat)
           return newChat
         }
         else {
@@ -62,28 +58,23 @@ function App() {
     return () => {
         window.removeEventListener("keydown", handleUserKeyPress);
     };
-}, [handleUserKeyPress]);
+  }, [handleUserKeyPress]);
 
   useEffect(() => {
-    if (chatContacts.length > 0) {
-      // update current data
-      if (currentChatData) {
-        const newCurrentData = chatContacts.find((t_data) => t_data["sessionId"] === currentChatData["sessionId"])
-        setCurrentChatData({...newCurrentData})
-      }
+    if (currentChat) {
+      const newCurrentData = chats.find((t_data) => t_data["sessionId"] === currentChat["sessionId"])
+      setCurrentChat({...newCurrentData})
     }
     // eslint-disable-next-line 
-  }, [chatContacts])
-
-  // useEffect(() => {
-  //   if (currentChatData && !disableActions && !isMessageSending) {
-  //     messageInputRef.current.focus()
-  //   }
-  // }, [currentChatData])
+  }, [chats])
 
   useEffect(() => {
-    if (currentChatData && currentChatData.isActive) {
+    if (currentChat && currentChat.isActive && !isFetching) {
       setDisableActions(false)
+      setTimeout(() => {
+        messageInputRef.current.focus()
+       }, [1500])
+
     }
     else {
       if (messageInputRef.current) {
@@ -91,17 +82,22 @@ function App() {
       }
       setDisableActions(true)
     }
-  }, [currentChatData])
+  }, [currentChat, isFetching])
 
   function submitApiKey() {
-    setIsRegistering(true)
+    if (!apiKeyInputRef.current || apiKeyInputRef.current.value == '') {
+      alert("missing api key")
+      return;
+    }
+    if (isFetching) return
+
+    setIsFetching(true)
     const url = `${serverPath}/addAIStudioKey`
     axios.post(url, {
       "jwt": jwt,
       "apiKey": apiKeyInputRef.current.value
     })
     .then((res) => {
-      console.log("res: ", res)
       const userId = res.data.userId
       if (userId) {
         setUserId(userId)
@@ -111,63 +107,69 @@ function App() {
       console.log("addAIStudioKey axios error: ", err);
     })
     .finally(() => {
-      setIsRegistering(false)
+      setIsFetching(false)
     })
   }
 
   function disconnect() {
-    if (!currentChatData) return;
+    if (!currentChat || isFetching) return;
+
+    setIsFetching(true)
+
     const url = `${serverPath}/disconnect/${userId}`
     axios.post(url, {
-      sessionId: currentChatData.sessionId,
-      region: currentChatData.region
+      sessionId: currentChat.sessionId,
+      region: currentChat.region
     })
     .then((res) => {
       if (res.data.err) {
         alert(res.data.err)
       }
       else {
-        const contactIndex = chatContacts.findIndex((contact) => contact.sessionId === currentChatData.sessionId) 
+        const contactIndex = chats.findIndex((contact) => contact.sessionId === currentChat.sessionId) 
         if (contactIndex !== -1) {
-          let updatedContact =  [...chatContacts]
+          let updatedContact =  [...chats]
           updatedContact[contactIndex]['isActive'] = false
-          setChatContacts(updatedContact)
+          setChats(updatedContact)
         }
       }
-      console.log("Disconnect response received: ", res);
     })
     .catch((err) => {
       alert(err)
-      console.log("disconnect axios error: ", err);
+    })
+    .finally(() => {
+      setIsFetching(false)
     })
   }
 
   function sendVideoLink() {
-    if (!currentChatData) return;
-    setIsMessageSending(true)
+    if (!currentChat || isFetching) return;
+
+    setIsFetching(true)
     const url = `${serverPath}/sendMessage/${userId}`
 
     axios.post(url, {
-      "region": currentChatData.region,
-      "sessionId": currentChatData.sessionId,
+      "region": currentChat.region,
+      "sessionId": currentChat.sessionId,
       "messageType": "text",
-      "messageText": `Join the call: https://freeconferencing.vonage.com/room/${currentChatData.sessionId}`
+      "messageText": `Join the call: https://freeconferencing.vonage.com/room/${currentChat.sessionId}`
     })
     .then((res) => {
       if (res.data.err) {
         alert(res.data.err)
       }
       updateSentChatMessage(res.data.chatMessage)
-      window.open(`https://freeconferencing.vonage.com/room/${currentChatData.sessionId}`,'_blank');
+      window.open(`https://freeconferencing.vonage.com/room/${currentChat.sessionId}`,'_blank');
 
     })
     .catch((err) => {
       alert(err)
     })
     .finally(()=> {
-      setIsMessageSending(false)
+      setIsFetching(false)
     })
   }
+
   function handleUserKeyPress(e) {
     if (e.code === "Enter") {
       sendMessage();
@@ -175,14 +177,13 @@ function App() {
   };
 
   function sendMessage() {    
-    console.log("inside sent message")
-    if (!currentChatData || !messageInputRef.current.value) return;
+    if (!currentChat || messageInputRef.current.value == '' || isFetching) return;
 
-    setIsMessageSending(true)
+    setIsFetching(true)
     const url = `${serverPath}/sendMessage/${userId}`
     axios.post(url, {
-      "region": currentChatData.region,
-      "sessionId": currentChatData.sessionId,
+      "region": currentChat.region,
+      "sessionId": currentChat.sessionId,
       "messageType": "text",
       "messageText": messageInputRef.current.value
     })
@@ -195,18 +196,17 @@ function App() {
     .catch((err) => {
       alert(err)
     }).finally(() => {
-      setIsMessageSending(false)
-      messageInputRef.current.value = ""
+      setIsFetching(false)
     })
   }
 
   function updateSentChatMessage(chatMessage) {
     if (chatMessage) {
-      const contactIndex = chatContacts.findIndex((contact) => contact.sessionId === chatMessage.sessionId) 
+      const contactIndex = chats.findIndex((contact) => contact.sessionId === chatMessage.sessionId) 
       if (contactIndex !== -1) {
-        let updatedContact =  [...chatContacts]
+        let updatedContact =  [...chats]
         updatedContact[contactIndex]['message'].push(chatMessage.message)
-        setChatContacts(updatedContact)
+        setChats(updatedContact)
       }
     }
   }
@@ -223,31 +223,31 @@ function App() {
             setUserId={setUserId}
           ></Instructions>
           <Contacts
-          chatContacts={chatContacts}
-          setCurrentChatData={setCurrentChatData}
+          chats={chats}
+          setCurrentChat={setCurrentChat}
           ></Contacts>
           <div id="messages-section">
-            <h3>Chat: {currentChatData ? currentChatData.sender : ""} {disableActions && currentChatData ? "(disconnected)" : ""}</h3>
-            <button id="end-conversation" className="secondary" onClick={disconnect} disabled={disableActions || isMessageSending}>End connection</button>
+            <h3>Chat: {currentChat ? currentChat.sender : ""} {currentChat && !currentChat.isActive ? "(disconnected)" : ""}</h3>
+            <button id="end-conversation" className="secondary" onClick={disconnect} disabled={disableActions}>End connection</button>
             <hr></hr>
             <Messages
-            currentChatData={currentChatData}>
+            currentChat={currentChat}>
             </Messages>
             <div id="input-section">
-              <button id="video-button" className="secondary" onClick={sendVideoLink} disabled={disableActions || isMessageSending}>
-                <img alt="video-call" src={disableActions || isMessageSending ? "/assets/video-call-disabled.svg" : "/assets/video-call.svg"}></img>
+              <button id="video-button" className="secondary" onClick={sendVideoLink} disabled={disableActions}>
+                <img alt="video-call" src={disableActions ? "/assets/video-call-disabled.svg" : "/assets/video-call.svg"}></img>
               </button>
-              <input ref={messageInputRef} placeholder='Type message here...' type="text" id="text-message" name="text-message" disabled={disableActions || isMessageSending}></input>
-              <button id="send-button" className="primary" onClick={sendMessage} disabled={disableActions || isMessageSending}>Send</button>
+              <input ref={messageInputRef} placeholder='Type message here...' type="text" id="text-message" name="text-message" disabled={disableActions}></input>
+              <button id="send-button" className="primary" onClick={sendMessage} disabled={disableActions}>Send</button>
             </div>
            </div>
         </div>
       :
         <div id="pre-register">
-          <label>AI Studio Key <span>&#40; please refer to <a href="https://studio.docs.ai.vonage.com/api-integration/authentication" _blank="true">AI Studio Authentication </a>to get the API Key &#41;</span></label>
+          <label>AI Studio Key <span>&#40; please refer to <a href="https://studio.docs.ai.vonage.com/api-integration/authentication" target="_blank">AI Studio Authentication </a>to get the API Key &#41;</span></label>
           <input type="password" ref={apiKeyInputRef} autoFocus></input>
           <div id="input-section">
-            <button className="primary" onClick={submitApiKey} disabled={isRegistering}>Register</button>
+            <button className="primary" onClick={submitApiKey} disabled={isFetching}>Register</button>
           </div>
         </div>
       }

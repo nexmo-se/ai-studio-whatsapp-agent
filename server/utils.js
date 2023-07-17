@@ -15,7 +15,9 @@ module.exports = {
   getNexmo: (id) => new Promise((resolve, reject) => {
     resolve(data);
   }),
-  getIdFromJWT: (token) => {return id},
+  getIdFromJWT: (nids, token) => {
+    return token
+  },
   getBearerToken: () => {return id},
   getIniStuff: () => {
     return data;

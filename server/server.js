@@ -1,4 +1,4 @@
-const utils = require('./utils');
+const utils = require('../../utils');
 const express = require('express');
 var cors = require('cors')
 const low = require('lowdb');
@@ -113,13 +113,15 @@ app.post('/pastMessages/:userId', async function(req,res){
     const transcription = history.transcription;
 
     const data = {sessionId, isActive: true, region};
-    history.parameters.forEach((param) => {
-        if (param.name === "PROFILE_NAME") data["sender"] = param.value;
-        if (param.name === "AGENT_PHONE_NUMBER") data["agentPhoneNumber"] = param.value;
-        if (param.name === "CONVERSATION_START_DATE") data["startDate"] = param.value;
-        if (param.name === "CONVERSATION_START_TIME") data["startTime"] = param.value;
-        if (param.name === "SENDER_PHONE_NUMBER") data["senderPhoneNumber"] = param.value;
-    })
+    if (history && Array.isArray(history.parameters)) {
+        history.parameters.forEach((param) => {
+            if (param.name === "PROFILE_NAME") data["sender"] = param.value;
+            if (param.name === "AGENT_PHONE_NUMBER") data["agentPhoneNumber"] = param.value;
+            if (param.name === "CONVERSATION_START_DATE") data["startDate"] = param.value;
+            if (param.name === "CONVERSATION_START_TIME") data["startTime"] = param.value;
+            if (param.name === "SENDER_PHONE_NUMBER") data["senderPhoneNumber"] = param.value;
+        })
+    }
     data["message"] = transcription
 
     const existingUser = db.get("users").find({"userId": userId}).value()
@@ -258,7 +260,9 @@ function getId(jwt) {
 }
 
 function broadcast(userId, data) {
-    clients[userId].send(JSON.stringify(data)); 
+    if (clients[userId]) {
+        clients[userId].send(JSON.stringify(data)); 
+    }
 }
 
 function disconnectSessions(userId) {

@@ -1,0 +1,21 @@
+project:
+  name: ai-studio-whatsapp-agent
+instance:
+  name: dev
+  runtime: nodejs16
+  region:
+  application-id:
+  environment:
+    - name: ENCRYPTED_SECRET
+      secret: ENCRYPTED_SECRET
+  entrypoint:
+    - node
+    - server.js
+debug:
+  name: debug
+  entrypoint:
+    - nodemon
+    - --ignore
+    - db.json
+    - --inspect
+    - server.js

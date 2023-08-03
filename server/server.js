@@ -1,17 +1,17 @@
-const utils = require('../../utils');
+require('dotenv')
 const express = require('express');
 var cors = require('cors')
 const low = require('lowdb');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') })
 const app = express();
 app.use(cors())
 app.use(express.json());
 app.use(express.static("express"));
 const axios = require("axios");
+const jwt_decode = require('jwt-decode');
 const { encrypt, decrypt} = require('./EncryptionHandler')
 
-const webSocketServerPort = process.env.PORT || 3002;
+const webSocketServerPort = process.env.NERU_APP_PORT ||  process.env.PORT || 3002;
 const webSocketServer = require('websocket').server;
 const http = require('http');
 
@@ -25,7 +25,6 @@ const wsServer = new webSocketServer({
 })
 let clients = {};
 const validRegion = ["us", "eu"]
-let gnids = utils.getIniStuff(); 
 
 // Use JSON file for storage
 const FileSync = require('lowdb/adapters/FileSync');
@@ -39,7 +38,8 @@ wsServer.on('request', function(request) {
     // Acccept all request, can set to accept only specific origin
     const connection = request.accept(null, request.origin)
     const jwt = request.resourceURL.query.jwt
-    let userId = getId(jwt)
+
+    let userId = getId(jwt).toString()
     console.log("ws request", userId)
     if (userId != -1) {
         clients[userId] = connection
@@ -54,11 +54,15 @@ wsServer.on('request', function(request) {
     }
 })
 
+app.get('/_/health', async (req, res) => {
+    res.sendStatus(200);
+});
+
 // default URL for website
-app.use(express.static(path.join(__dirname, "../build")));
+app.use(express.static(path.join(__dirname, "./build")));
 
 app.get('/', function(req,res){
-    res.sendFile(path.join(__dirname, "../build/index.html"));
+    res.sendFile(path.join(__dirname, "./build/index.html"));
 });
 
 app.post('/addAIStudioKey', async function(req,res){
@@ -69,7 +73,7 @@ app.post('/addAIStudioKey', async function(req,res){
     }
 
     const hashedApiKey = encrypt(apiKey)
-    let userId = getId(jwt)
+    let userId = getId(jwt).toString()
 
     if (userId !== -1) {
         const existingUser = db.get("users").find({"userId": userId}).value()
@@ -251,12 +255,16 @@ app.post('/sendMessage/:userId', async function(req, res) {
 })
 
 function getId(jwt) {
-    let id = utils.getIdFromJWT(gnids, jwt);
-    // let id = parseJwt(jwt);
-    if (id <= 0) {
-      return -1;
+    let id = -1
+    try {
+        let jwtData = jwt_decode(jwt);
+        if (jwtData.userid && jwtData.userid >= 0) {
+            id = jwtData.userid
+        }
+        return id
+    } catch {
+        return id
     }
-    return id;
 }
 
 function broadcast(userId, data) {

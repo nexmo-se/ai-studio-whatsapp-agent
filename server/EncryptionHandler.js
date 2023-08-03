@@ -1,5 +1,5 @@
 const crypto = require('crypto')
-const secret = process.env.ENCRYPTED_SECRET
+const secret = process.env.ENCRYPTED_SECRET || 'vonageCSEwhatsappAgent'
 
 const encrypt = (apiKey) => {
     const iv = Buffer.from(crypto.randomBytes(16));

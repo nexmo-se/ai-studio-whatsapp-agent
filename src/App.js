@@ -10,7 +10,7 @@ const jwt = queryParams.get("ref")
 
 let hostUrl = process.env.REACT_APP_WEBSOCKET || window.location.origin.replace(/^http/, 'ws')
 // Add jwt
-hostUrl = hostUrl + `?jwt=${jwt}`
+hostUrl = hostUrl + `/?jwt=${jwt}`
 const ws = new WebSocket(hostUrl);
 
 function App() {

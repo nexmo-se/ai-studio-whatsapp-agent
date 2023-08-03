@@ -17,4 +17,4 @@ This is a whatsapp agent for ticket: https://jira.vonage.com/browse/SEG-670
    Start Connection EP: `your-public-server`/pastMessages?region=`project-region`\
    Inbound transfer EP: `your--public-server`/currentMessage
 
-Demo: [link](https://drive.google.com/file/d/1B7HcarX8gUMe73GG2ZNxZEef-ZhQFPLH/view)
+Demo: [link](https://www.youtube.com/watch?v=gdvHK3GpYrg)

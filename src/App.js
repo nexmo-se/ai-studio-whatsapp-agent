@@ -1,16 +1,20 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { serverPath } from './settings';
 import Contacts from './components/Contacts';
 import Messages from './components/Messages';
-import './App.css'
 import Instructions from './components/Instructions';
-import { serverPath } from './settings';
+import Register from './components/Register';
+
+import './App.css'
+import Introduction from './components/Introduction';
+
 const queryParams = new URLSearchParams(window.location.search)
-const jwt = queryParams.get("ref")
+const authToken = queryParams.get("ref")
 
 let hostUrl = process.env.REACT_APP_WEBSOCKET || window.location.origin.replace(/^http/, 'ws')
 // Add jwt
-hostUrl = hostUrl + `/?jwt=${jwt}`
+hostUrl = hostUrl + `/?jwt=${authToken}`
 const ws = new WebSocket(hostUrl);
 
 function App() {
@@ -21,7 +25,6 @@ function App() {
   const [disableActions, setDisableActions] = useState(true)
   const [userId, setUserId] = useState(null)
 
-  const apiKeyInputRef = useRef();
   const messageInputRef = useRef();
 
   ws.onmessage = function (event) {
@@ -51,64 +54,6 @@ function App() {
   ws.onopen = () => {
     console.log("Websocket client connected")
     setIsLoading(false)
-  }
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleUserKeyPress);
-    return () => {
-        window.removeEventListener("keydown", handleUserKeyPress);
-    };
-  }, [handleUserKeyPress]);
-
-  useEffect(() => {
-    if (currentChat) {
-      const newCurrentData = chats.find((t_data) => t_data["sessionId"] === currentChat["sessionId"])
-      setCurrentChat({...newCurrentData})
-    }
-    // eslint-disable-next-line 
-  }, [chats])
-
-  useEffect(() => {
-    if (currentChat && currentChat.isActive && !isFetching) {
-      setDisableActions(false)
-      setTimeout(() => {
-        messageInputRef.current.focus()
-       }, [1500])
-
-    }
-    else {
-      if (messageInputRef.current) {
-        messageInputRef.current.value = ''
-      }
-      setDisableActions(true)
-    }
-  }, [currentChat, isFetching])
-
-  function submitApiKey() {
-    if (!apiKeyInputRef.current || apiKeyInputRef.current.value == '') {
-      alert("missing api key")
-      return;
-    }
-    if (isFetching) return
-
-    setIsFetching(true)
-    const url = `${serverPath}/addAIStudioKey`
-    axios.post(url, {
-      "jwt": jwt,
-      "apiKey": apiKeyInputRef.current.value
-    })
-    .then((res) => {
-      const userId = res.data.userId
-      if (userId) {
-        setUserId(userId)
-      }
-    })
-    .catch((err) => {
-      console.log("addAIStudioKey axios error: ", err);
-    })
-    .finally(() => {
-      setIsFetching(false)
-    })
   }
 
   function disconnect() {
@@ -170,14 +115,19 @@ function App() {
     })
   }
 
-  function handleUserKeyPress(e) {
-    if (e.code === "Enter") {
-      sendMessage();
+  const updateSentChatMessage = useCallback((chatMessage) => {
+    if (chatMessage) {
+      const contactIndex = chats.findIndex((contact) => contact.sessionId === chatMessage.sessionId) 
+      if (contactIndex !== -1) {
+        let updatedContact =  [...chats]
+        updatedContact[contactIndex]['message'].push(chatMessage.message)
+        setChats(updatedContact)
+      }
     }
-  };
+  }, [chats])
 
-  function sendMessage() {    
-    if (!currentChat || messageInputRef.current.value == '' || isFetching) return;
+  const sendMessage = useCallback(() => {    
+    if (!currentChat || messageInputRef.current.value === '' || isFetching) return;
 
     setIsFetching(true)
     const url = `${serverPath}/sendMessage/${userId}`
@@ -198,18 +148,44 @@ function App() {
     }).finally(() => {
       setIsFetching(false)
     })
-  }
+  }, [currentChat, isFetching, userId, updateSentChatMessage])
 
-  function updateSentChatMessage(chatMessage) {
-    if (chatMessage) {
-      const contactIndex = chats.findIndex((contact) => contact.sessionId === chatMessage.sessionId) 
-      if (contactIndex !== -1) {
-        let updatedContact =  [...chats]
-        updatedContact[contactIndex]['message'].push(chatMessage.message)
-        setChats(updatedContact)
-      }
+  const handleUserKeyPress = useCallback((e) => {
+    if (e.code === "Enter") {
+      sendMessage();
     }
-  }
+  }, [sendMessage]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleUserKeyPress);
+    return () => {
+        window.removeEventListener("keydown", handleUserKeyPress);
+    };
+  }, [handleUserKeyPress]);
+
+  useEffect(() => {
+    if (currentChat) {
+      const newCurrentData = chats.find((t_data) => t_data["sessionId"] === currentChat["sessionId"])
+      setCurrentChat({...newCurrentData})
+    }
+    // eslint-disable-next-line 
+  }, [chats])
+
+  useEffect(() => {
+    if (currentChat && currentChat.isActive && !isFetching) {
+      setDisableActions(false)
+      setTimeout(() => {
+        messageInputRef.current.focus()
+       }, [1500])
+
+    }
+    else {
+      if (messageInputRef.current) {
+        messageInputRef.current.value = ''
+      }
+      setDisableActions(true)
+    }
+  }, [currentChat, isFetching])
 
   return (
     <div className="App">
@@ -244,11 +220,11 @@ function App() {
         </div>
       :
         <div id="pre-register">
-          <label>AI Studio Key <span>&#40; please refer to <a href="https://studio.docs.ai.vonage.com/api-integration/authentication" target="_blank">AI Studio Authentication </a>to get the API Key &#41;</span></label>
-          <input type="password" ref={apiKeyInputRef} autoFocus></input>
-          <div id="input-section">
-            <button className="primary" onClick={submitApiKey} disabled={isFetching}>Register</button>
-          </div>
+          <Register
+          setUserId={setUserId}
+          authToken={authToken}
+          ></Register>
+          <Introduction></Introduction>
         </div>
       }
     </div>

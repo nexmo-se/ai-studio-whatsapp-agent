@@ -68,7 +68,7 @@ input {
 }
 
 .loader {
-  margin: 30% auto 0 auto;
+  margin: 20% auto 0 auto;
   border: 8px solid #f3f3f3;
   border-radius: 50%;
   border-top: 8px solid #A9A9A9;
@@ -92,7 +92,7 @@ input {
 #post-register, #pre-register {
   margin-left: 16px;
   margin-right: 16px;
-  height: calc(100vh - 280px);
+  height: calc(100vh - 140px);
   text-align: center;
 }
 
@@ -120,10 +120,6 @@ input {
 #text-message {
   margin-right: 8px;
   width: 60%;
-}
-
-#input-section input {
-  text-align: left;
 }
 
 #video-button {

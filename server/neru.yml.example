@@ -7,7 +7,7 @@ instance:
   application-id:
   environment:
     - name: ENCRYPTED_SECRET
-      secret: ENCRYPTED_SECRET
+      value: ""
   entrypoint:
     - node
     - server.js

@@ -33,13 +33,13 @@ const db = low(adaptor)
 db.defaults({ users: []})
   .write()
 
-wsServer.on('request', function(request) {
+wsServer.on('request', async function(request) {
     console.log(`${(new Date())} received a new connection from ${request.origin}`)
     // Acccept all request, can set to accept only specific origin
     const connection = request.accept(null, request.origin)
     const jwt = request.resourceURL.query.jwt
 
-    let userId = getId(jwt).toString()
+    let userId = await getId(jwt)
     console.log("ws request", userId)
     if (userId != -1) {
         clients[userId] = connection
@@ -66,16 +66,17 @@ app.get('/', function(req,res){
 });
 
 app.post('/addAIStudioKey', async function(req,res){
-    const {jwt, apiKey} = req.body
+    const jwt = req.headers.authorization
+    const {apiKey} = req.body
 
     if (!jwt || !apiKey) {
         return res.sendStatus(501)
     }
 
     const hashedApiKey = encrypt(apiKey)
-    let userId = getId(jwt).toString()
+    let userId = await getId(jwt)
 
-    if (userId !== -1) {
+    if (userId != -1) {
         const existingUser = db.get("users").find({"userId": userId}).value()
         // add hashed APIKey to DB
         if (existingUser) {
@@ -254,16 +255,16 @@ app.post('/sendMessage/:userId', async function(req, res) {
 	}
 })
 
-function getId(jwt) {
+async function getId(jwt) {
     let id = -1
     try {
-        let jwtData = jwt_decode(jwt);
+        let jwtData = await jwt_decode(jwt);
         if (jwtData.userid && jwtData.userid >= 0) {
             id = jwtData.userid
         }
-        return id
+        return id.toString()
     } catch {
-        return id
+        return id.toString()
     }
 }
 

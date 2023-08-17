@@ -9,7 +9,7 @@ export default function Register({setUserId, authToken}) {
 
     function submitApiKey() {
         if (!apiKeyInputRef.current || apiKeyInputRef.current.value === '') {
-          alert("missing api key")
+          alert("missing AI Studio X-Vgai-Key")
           return;
         }
         if (isFetching) return
@@ -41,7 +41,7 @@ export default function Register({setUserId, authToken}) {
 
     return (
         <div>
-            <label>AI Studio Key <span>&#40; please refer to <a href="https://studio.docs.ai.vonage.com/api-integration/authentication" target="_blank" rel="noreferrer">AI Studio Authentication </a>to get the API Key &#41;</span></label>
+            <label>AI Studio X-Vgai-Key <span>&#40; please refer to <a href="https://studio.docs.ai.vonage.com/api-integration/authentication" target="_blank" rel="noreferrer">AI Studio Authentication </a>to get the X-Vgai-Key &#41;</span></label>
             <input type="password" ref={apiKeyInputRef} autoFocus></input>
             <div id="input-section">
             <button className="primary" onClick={submitApiKey} disabled={isFetching}>Register</button>

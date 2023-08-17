@@ -10,8 +10,8 @@ export default function Introduction() {
         </p>
         <h3>How to use:</h3>
         <ol>
-            <li>Generate <a href="https://studio.docs.ai.vonage.com/api-integration/authentication" target="_blank" rel="noreferrer">API Key</a> from your <a href="https://studio.ai.vonage.com/" target="_blank" rel="noreferrer">AI Studio Account</a></li>
-            <li>Register your AI Studio API key using the form above.</li>
+            <li>Generate <a href="https://studio.docs.ai.vonage.com/api-integration/authentication" target="_blank" rel="noreferrer">AI Studio X-Vgai-Key</a> from your <a href="https://studio.ai.vonage.com/" target="_blank" rel="noreferrer">AI Studio Account</a></li>
+            <li>Register your AI Studio X-Vgai-Key using the form above.</li>
             <li>After registration completed, you will get 2 webhooks: <strong>Start Connection EP</strong> and <strong>Inbound transfer EP</strong></li>
             <li>Copy and Paste the webhooks into your AI Studio Live Agent Routing node. </li>
             <li>The WhatsApp user's connection with this application will be established when they reach the Live Agent Routing node in your AI flow</li>

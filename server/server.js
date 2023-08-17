@@ -1,7 +1,7 @@
 require('dotenv')
+const { neru } = require("neru-alpha");
 const express = require('express');
 var cors = require('cors')
-const low = require('lowdb');
 const path = require('path');
 const app = express();
 app.use(cors())
@@ -26,12 +26,8 @@ const wsServer = new webSocketServer({
 let clients = {};
 const validRegion = ["us", "eu"]
 
-// Use JSON file for storage
-const FileSync = require('lowdb/adapters/FileSync');
-const adaptor = new FileSync('db.json')
-const db = low(adaptor)
-db.defaults({ users: []})
-  .write()
+const neruState = neru.getInstanceState();
+const USER_STATE_KEY = "users"
 
 wsServer.on('request', async function(request) {
     console.log(`${(new Date())} received a new connection from ${request.origin}`)
@@ -47,8 +43,8 @@ wsServer.on('request', async function(request) {
         disconnectSessions(userId)
 
         // Check if db has userId exist
-        const existingUser = db.get("users").find({"userId": userId}).value()
-        if (existingUser && existingUser["hashedApiKey"]) {
+        const existingUserData = await neruState.hget(USER_STATE_KEY, `${userId}`) 
+        if (existingUserData && JSON.parse(existingUserData)["hashedApiKey"]) {
             broadcast(userId, {userId})
         }
     }
@@ -77,21 +73,16 @@ app.post('/addAIStudioKey', async function(req,res){
     let userId = await getId(jwt)
 
     if (userId != -1) {
-        const existingUser = db.get("users").find({"userId": userId}).value()
+
+        const existingUserData = await neruState.hget(USER_STATE_KEY, `${userId}`)
         // add hashed APIKey to DB
-        if (existingUser) {
-            await db.get('users')
-            .find({ userId })
-            .assign({hashedApiKey})
-            .write();
+        if (existingUserData) {
+            let existingUserDataJson = JSON.parse(existingUserData)
+            existingUserDataJson["hashedApiKey"] = hashedApiKey
+            await neruState.hset(USER_STATE_KEY, { [userId]: JSON.stringify(existingUserDataJson) });
         }
         else {
-            await db.get('users')
-            .push({
-                'userId': userId,
-                'hashedApiKey': hashedApiKey
-            })
-            .write()
+            await neruState.hset(USER_STATE_KEY, { [userId]: JSON.stringify({hashedApiKey}) });
         }
         res.json({userId})
     }
@@ -106,7 +97,7 @@ app.post('/pastMessages/:userId', async function(req,res){
     const {sessionId} = req.body
 
     if (!userId || !sessionId) {
-        console.log("missin userid ", userId, "or session id ", sessionId)
+        console.log("missing userid ", userId, "or session id ", sessionId)
         return res.sendStatus(200);
     }
 
@@ -129,21 +120,18 @@ app.post('/pastMessages/:userId', async function(req,res){
     }
     data["message"] = transcription
 
-    const existingUser = db.get("users").find({"userId": userId}).value()
+    const existingUserData = await neruState.hget(USER_STATE_KEY, `${userId}`)
+    console.log("past message existing user ", existingUserData)
     // add hashed APIKey to DB
-    if (existingUser) {
-        if (!existingUser[region]) {
-            await db.get('users')
-            .find({ userId })
-            .push({ [region]: [sessionId] })
-            .write();
+    if (existingUserData) {
+        let existingUserDataJson = JSON.parse(existingUserData)
+        if (!existingUserDataJson[region]) {
+            existingUserDataJson[region] = [sessionId]
+            await neruState.hset(USER_STATE_KEY, { [userId]: JSON.stringify(existingUserDataJson) });
         }
-        else if (!existingUser[region].includes(sessionId)) {
-            let sessionData = existingUser[region].push(sessionId)
-            await db.get('users')
-            .find({ userId })
-            .push({ [region]: sessionData })
-            .write();
+        else if (!existingUserDataJson[region].includes(sessionId)) {
+            existingUserDataJson[region].push(sessionId)
+            await neruState.hset(USER_STATE_KEY, { [userId]: JSON.stringify(existingUserDataJson) });
         }     
     }
     broadcast(userId, data)
@@ -199,8 +187,13 @@ app.post('/disconnect/:userId', async function(req, res) {
         return res.sendStatus(501)
     }
 
-    const userData =  db.get('users').find({ userId }).value()
-    if (!userData || !userData["hashedApiKey"]) {
+    const userData =  await neruState.hget(USER_STATE_KEY, `${userId}`) 
+    if (!userData) {
+        return res.sendStatus(501)
+    }
+    const userDataJson = JSON.parse(userData)
+
+    if (!userDataJson["hashedApiKey"]) {
         return res.sendStatus(501)
     }
 
@@ -208,7 +201,7 @@ app.post('/disconnect/:userId', async function(req, res) {
 	try {
 		await axios.post(url, {}, {
             headers: {
-                "X-Vgai-Key" : decrypt(userData["hashedApiKey"])
+                "X-Vgai-Key" : decrypt(userDataJson["hashedApiKey"])
             }
         });
 		res.json({err: null});
@@ -225,8 +218,12 @@ app.post('/sendMessage/:userId', async function(req, res) {
     const userId = req.params.userId
     if (!userId || !region || !sessionId || !messageType || !messageText) return res.sendStatus(501)
 
-    const userData =  db.get('users').find({ userId }).value()
-    if (!userData || !userData["hashedApiKey"]) return res.status(501).send()
+    const userData =  await neruState.hget(USER_STATE_KEY, `${userId}`)
+    if (!userData) return res.status(501).send()
+
+    const userDataJson = JSON.parse(userData)
+
+    if (!userDataJson["hashedApiKey"]) return res.status(501).send()
 
     const url = `https://studio-api-${region}.ai.vonage.com/live-agent/outbound/${sessionId}`
     
@@ -239,7 +236,7 @@ app.post('/sendMessage/:userId', async function(req, res) {
 		await axios.post(url, message, {
             headers: {
                 "Content-Type": "application/json",
-                "X-Vgai-Key" : decrypt(userData["hashedApiKey"])
+                "X-Vgai-Key" : decrypt(userDataJson["hashedApiKey"])
             }
         });
 
@@ -274,34 +271,41 @@ function broadcast(userId, data) {
     }
 }
 
-function disconnectSessions(userId) {
+async function disconnectSessions(userId) {
     //Disconnect all session
-    const dbData = db.get('users').find({ userId }).value()
-    if (!dbData || !dbData['hashedApiKey']) return;
+    const existingUserData = await neruState.hget(USER_STATE_KEY, `${userId}`) 
+    if (!existingUserData) return;
+
+    let existingUserDataJson = JSON.parse(existingUserData)
+
+    console.log("disconnect session db data", existingUserDataJson)
+
+    if (!existingUserDataJson["hashedApiKey"]) return;
+
     validRegion.forEach((region) => {
-        if (Array.isArray(dbData[region])) {
-            dbData[region].forEach(async (sessionId) => {
+        if (Array.isArray(existingUserDataJson[region])) {
+            existingUserDataJson[region].forEach(async (sessionId) => {
                 const url = `https://studio-api-${region}.ai.vonage.com/live-agent/disconnect/${sessionId}`
                 try {
                     await axios.post(url, {}, {
                         headers: {
-                            "X-Vgai-Key" : decrypt(dbData['hashedApiKey'])
+                            "X-Vgai-Key" : decrypt(existingUserDataJson['hashedApiKey'])
                         }
                     });
+                    console.log("session id disconnected ", sessionId )
+                    
+                    existingUserDataJson[region] = existingUserDataJson[region].filter((t_sessionId) => t_sessionId !== sessionId)
+                    await neruState.hset(USER_STATE_KEY, { [userId]: JSON.stringify(existingUserDataJson) });
                 }
                 catch(err) {
-                    console.log("disconnect session err", err)
+                    console.log("session id disconnected error ", err.response )
+                    if (err.response.data.statusCode === 404) {
+                        existingUserDataJson[region] = existingUserDataJson[region].filter((t_sessionId) => t_sessionId !== sessionId)
+                        await neruState.hset(USER_STATE_KEY, { [userId]: JSON.stringify(existingUserDataJson) });
+                    }
                 }
             })
         }
-    })
-
-    // clear DB
-    validRegion.forEach(async (region) => {
-        await db.get('users')
-        .find({ userId })
-        .assign({[region]: []})
-        .write()
     })
 }
 

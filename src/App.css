@@ -92,7 +92,7 @@ input {
 #post-register, #pre-register {
   margin-left: 16px;
   margin-right: 16px;
-  height: calc(100vh - 140px);
+  height: calc(100vh - 400px);
   text-align: center;
 }
 

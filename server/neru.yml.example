@@ -11,6 +11,9 @@ instance:
   entrypoint:
     - node
     - server.js
+  scaling:
+    min-scale: 1
+    max-scale: 5
 debug:
   name: debug
   entrypoint:
